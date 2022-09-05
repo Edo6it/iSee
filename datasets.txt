@@ -1,0 +1,15 @@
+traffic lights --> https://www.kaggle.com/datasets/mbornoe/lisa-traffic-light-dataset?resource=download
+
+car --> https://www.kaggle.com/datasets/sshikamaru/car-object-detection
+
+crosswalk --> https://www.kaggle.com/datasets/davidsilvam/crosswalkdataset
+
+pedestrian traffic lights --> https://github.com/samuelyu2002/ImVisible
+
+car obj detection --> https://public.roboflow.com/object-detection/self-driving-car/
+
+car images and pedestrian --> https://www.nuscenes.org/nuimages#data-annotation
+
+some datasets --> https://analyticsindiamag.com/top-10-popular-datasets-for-autonomous-driving-projects/
+
+car lane --> https://doc.bdd100k.com/index.html
