@@ -22,6 +22,7 @@ def make_points(image, average):
 
     return np.array([x1, y1, x2, y2])
 
+
 def average(image, lines):
     left    = []
     right   = []
@@ -56,7 +57,7 @@ def display_lines(image, lines):
     
     return lines_image
 
-# img = cv2.imread('/Users/Edo/Desktop/68_10.png')
+
 def process(img):
     copy = np.copy(img)
     
@@ -69,21 +70,20 @@ def process(img):
             (1700, height)
         ]
 
-        gray = cv2.cvtColor(copy, cv2.COLOR_BGR2GRAY)
-        blur = cv2.GaussianBlur(gray, (5,5), 0)
-        edges = cv2.Canny(blur, 190, 250)
-        masked_img = region_of_interest(edges, np.array([region_of_interest_vertices], np.int32))
+        gray            = cv2.cvtColor(copy, cv2.COLOR_BGR2GRAY)
+        blur            = cv2.GaussianBlur(gray, (5,5), 0)
+        edges           = cv2.Canny(blur, 190, 250)
+        masked_img      = region_of_interest(edges, np.array([region_of_interest_vertices], np.int32))
 
-        lines = cv2.HoughLinesP(masked_img, rho=1, theta=np.pi/180, threshold=100, lines=np.array([]), minLineLength=100, maxLineGap=10)
+        lines           = cv2.HoughLinesP(masked_img, rho=1, theta=np.pi/180, threshold=100, lines=np.array([]), minLineLength=100, maxLineGap=10)
 
         averaged_lines  = average(copy, lines)
         black_lines     = display_lines(copy, averaged_lines)
 
-        lanes = cv2.addWeighted(copy, 0.8, black_lines, 1, 1)
+        lanes           = cv2.addWeighted(copy, 0.8, black_lines, 1, 1)
         return lanes
 
 cap = cv2.VideoCapture("/Users/Edo/Desktop/video_clip.mp4")
-
 while(cap.isOpened()):
     ret, frame  = cap.read()
     frame       = process(frame)
