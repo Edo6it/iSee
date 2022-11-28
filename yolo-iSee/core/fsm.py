@@ -3,14 +3,20 @@
 State = type("State", (object,), {})
 
 class NoState(State):
+    state = "NoState"
+    
     def execute(self):
         print("No State")
 
 class Walking(State):
+    state = "Walking"
+    
     def execute(self):
         print("Walking")
 
 class Crossing(State):
+    state = "Crossing"
+    
     def execute(self):
         print("Crossing")
 
@@ -30,12 +36,10 @@ class FSM(object):
         self.char = char 
         # Dictionary to store the states
         self.states = {}
-        # Dictionary to store the states
+        # Dictionary to store the transitions
         self.transitions = {}
         # Current state
-        self.curState = None 
-        # Previous state
-        self.prevState = None
+        self.curState = None
         # Current transition
         self.curTrans = None 
 
@@ -65,7 +69,7 @@ class Char(object):
 
         self.FSM.transitions["toWalking"] = Transition("Walking")
         self.FSM.transitions["toCrossing"] = Transition("Crossing")
-        self.FSM.transitions["toIDLE"] = Transition("NoState")
+        self.FSM.transitions["toNoState"] = Transition("NoState")
 
         self.FSM.setState("NoState")
 

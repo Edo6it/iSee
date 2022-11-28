@@ -6,6 +6,7 @@ import tensorflow as tf
 import pytesseract
 from core.utils import read_class_names
 from core.config import cfg
+from core.fsm import *
 
 # function to count objects, can return total classes or count per class
 def count_objects(data, by_class = True):
@@ -98,6 +99,25 @@ def infer_tl(img, num_classes, allowed_classes, data):
 
     return colors 
 
+def check_state(data, isSidewalk):
+    char = Char()
+    curState = char.FSM.curState
+    _, _, classes, _ = data
+
+    futureState = curState
+
+    # Check
+    if curState == NoState() and isSidewalk : futureState = Walking() 
+    if curState == NoState() and 'crosswalk' in classes : futureState = Crossing() 
+    if curState == Walking() and 'crosswalk' in classes : futureState = Crossing()
+    if curState == Walking() and not isSidewalk and 'crosswalk' not in classes : futureState = NoState()
+    if curState == Crossing() and 'crosswalk' not in classes and isSidewalk : futureState = Walking()
+    if curState == Crossing() and not isSidewalk and 'crosswalk' not in classes : futureState = NoState()
+
+    # Transition
+    if futureState != curState:
+        char.FSM.setTransition("to" + futureState.state)
+        char.FSM.execute()
 
 # function to run general Tesseract OCR on any detections 
 def ocr(img, data):
