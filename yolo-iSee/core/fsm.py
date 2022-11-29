@@ -1,24 +1,12 @@
+from enum import Enum
+
 # =================================
+# STATES EUNM
 
-State = type("State", (object,), {})
-
-class NoState(State):
-    state = "NoState"
-    
-    def execute(self):
-        print("No State")
-
-class Walking(State):
-    state = "Walking"
-    
-    def execute(self):
-        print("Walking")
-
-class Crossing(State):
-    state = "Crossing"
-    
-    def execute(self):
-        print("Crossing")
+class State(Enum):
+    NoState = "NoState"
+    Walking = "Walking"
+    Crossing = "Crossing"
 
 # =================================
 
@@ -27,7 +15,7 @@ class Transition(object):
         self.toState = toState
 
     def execute(self):
-        print("Transitioning...")
+        print("Transitioning to " + self.toState)
 
 # =================================
 
@@ -54,8 +42,6 @@ class FSM(object):
             self.curTrans.execute()
             self.setState(self.curTrans.toState)
             self.curTrans = None 
-        
-        self.curState.execute()
 
 # =================================
 
@@ -63,9 +49,9 @@ class Char(object):
     def __init__(self):
         self.FSM = FSM(self)
 
-        self.FSM.states["NoState"] = NoState()
-        self.FSM.states["Walking"] = Walking()
-        self.FSM.states["Crossing"] = Crossing()
+        self.FSM.states["NoState"] = State.NoState.value
+        self.FSM.states["Walking"] = State.Walking.value
+        self.FSM.states["Crossing"] = State.Crossing.value
 
         self.FSM.transitions["toWalking"] = Transition("Walking")
         self.FSM.transitions["toCrossing"] = Transition("Crossing")

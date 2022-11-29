@@ -232,7 +232,7 @@ def draw_circle(image, value, x, y, space):
         cv2.circle(image, (x + space, y), radius=10, color=color, thickness=-1)
         cv2.circle(image, (x + space + space, y), radius=10, color=color, thickness=-1)
 
-def draw_bbox(image, bboxes, tl_colors, info = False, counted_classes = None, show_label=True, allowed_classes=list(read_class_names(cfg.YOLO.CLASSES).values()), read_plate = False):
+def draw_bbox(image, bboxes, tl_colors, info = False, counted_classes = None, show_label = True, allowed_classes = list(read_class_names(cfg.YOLO.CLASSES).values()), read_plate = False):
     classes = read_class_names(cfg.YOLO.CLASSES)
     num_classes = len(classes)
     image_h, image_w, _ = image.shape

@@ -8,7 +8,10 @@ from core.utils import read_class_names
 from core.config import cfg
 from core.fsm import *
 
-# function to count objects, can return total classes or count per class
+# ==============================================================
+
+# PEOPLE COUNTER
+
 def count_objects(data, by_class = True):
     boxes, scores, classes, num_objects = data
 
@@ -35,7 +38,10 @@ def count_objects(data, by_class = True):
     
     return counts
 
-# function for cropping each detection and saving as new image
+# ==============================================================
+
+# CROP IMAGES DETECTIONS 
+
 def crop_objects(img, data, path, allowed_classes):
     boxes, scores, classes, num_objects = data
     class_names = read_class_names(cfg.YOLO.CLASSES)
@@ -58,6 +64,10 @@ def crop_objects(img, data, path, allowed_classes):
             cv2.imwrite(img_path, cropped_img)
         else:
             continue
+
+# ==============================================================
+
+# STATE TRAFFIC LIGHTS (red, yellow, green)
 
 def infer_tl(img, num_classes, allowed_classes, data):
     colors = dict()
@@ -99,27 +109,50 @@ def infer_tl(img, num_classes, allowed_classes, data):
 
     return colors 
 
-def check_state(data, isSidewalk):
+# ==============================================================
+
+# FSM
+
+def check_state(data, isSidewalk = False):
     char = Char()
-    curState = char.FSM.curState
+    curState = char.FSM.curState.state 
     _, _, classes, _ = data
 
     futureState = curState
 
     # Check
-    if curState == NoState() and isSidewalk : futureState = Walking() 
-    if curState == NoState() and 'crosswalk' in classes : futureState = Crossing() 
-    if curState == Walking() and 'crosswalk' in classes : futureState = Crossing()
-    if curState == Walking() and not isSidewalk and 'crosswalk' not in classes : futureState = NoState()
-    if curState == Crossing() and 'crosswalk' not in classes and isSidewalk : futureState = Walking()
-    if curState == Crossing() and not isSidewalk and 'crosswalk' not in classes : futureState = NoState()
+    if curState == State.NoState.value and isSidewalk : futureState = State.Walking.value
+    if curState == State.NoState.value and 'crosswalk' in classes : futureState = State.Crossing.value
+
+    if curState == State.Walking.value and 'crosswalk' in classes : futureState = State.Crossing.value
+    if curState == State.Walking.value and not isSidewalk and 'crosswalk' not in classes : futureState = State.NoState.value
+
+    if curState == State.Crossing.value and 'crosswalk' not in classes and isSidewalk : futureState = State.Walking.value
+    if curState == State.Crossing.value and not isSidewalk and 'crosswalk' not in classes : futureState = State.NoState.value 
 
     # Transition
     if futureState != curState:
-        char.FSM.setTransition("to" + futureState.state)
+        char.FSM.setTransition("to" + futureState)
         char.FSM.execute()
 
-# function to run general Tesseract OCR on any detections 
+    return char.FSM.curState
+
+# ==============================================================
+
+# CHECK CROSSWALK AND ITS DISTANCE
+def check_crosswalk(data):
+    pass 
+
+# ==============================================================
+
+# CHECK SIDEWALK
+def check_sidewalk():
+    pass 
+
+# ==============================================================
+
+# TESSERACT OCR 
+
 def ocr(img, data):
     boxes, scores, classes, num_objects = data
     class_names = read_class_names(cfg.YOLO.CLASSES)

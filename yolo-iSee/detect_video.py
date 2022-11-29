@@ -18,6 +18,10 @@ import numpy as np
 from tensorflow.compat.v1 import ConfigProto
 from tensorflow.compat.v1 import InteractiveSession
 
+# ==============================================================
+
+# FLAGS 
+
 flags.DEFINE_string('framework', 'tf', '(tf, tflite, trt')
 flags.DEFINE_string('weights', './checkpoints/yolov4-416',
                     'path to weights file')
@@ -34,6 +38,8 @@ flags.DEFINE_boolean('dont_show', False, 'dont show video output')
 flags.DEFINE_boolean('info', False, 'print info on detections')
 flags.DEFINE_boolean('crop', False, 'crop detections from images')
 flags.DEFINE_boolean('plate', False, 'perform license plate recognition')
+
+# ==============================================================
 
 def main(_argv):
     config = ConfigProto()
@@ -71,6 +77,10 @@ def main(_argv):
         fps = int(vid.get(cv2.CAP_PROP_FPS))
         codec = cv2.VideoWriter_fourcc(*FLAGS.output_format)
         out = cv2.VideoWriter(FLAGS.output, codec, fps, (width, height))
+
+# ==============================================================
+
+    # VIDEO INFER LOOP
 
     frame_num = 0
     while True:
@@ -122,47 +132,41 @@ def main(_argv):
 
         pred_bbox = [bboxes, scores.numpy()[0], classes.numpy()[0], valid_detections.numpy()[0]]
 
-        # read in all class names from config
-        class_names = utils.read_class_names(cfg.YOLO.CLASSES)
+        class_names = list(utils.read_class_names(cfg.YOLO.CLASSES).values())
 
-        # by default allow all classes in .names file
-        allowed_classes = list(class_names.values())
+# ==============================================================
+
+        # FSM
+
+        # TODO: - check sidewalk
+        isSidewalk = check_sidewalk()
+
+        # TODO: - check crosswalk and distance
+        check_crosswalk(pred_bbox)
+
+        # perform check state every 50 frames
+        if (frame_num % 50) == 0: 
+            state = check_state(pred_bbox, isSidewalk)
+
+        # TODO: - In base allo stato facciamo quello che dobbiamo fare
+        # ... 
+
+# ==============================================================
+
+        # PEOPLE COUNTER
+
+        num_people = count_objects(pred_bbox)
         
-        # custom allowed classes (uncomment line below to allow detections for only people)
-        #allowed_classes = ['person']
+        for key, value in num_people.items():
+            print("Number of people: {}".format(key, value))
 
-        colors = infer_tl(frame, len(allowed_classes), allowed_classes, pred_bbox)
-
-        check_state(pred_bbox)
-
-        # if crop flag is enabled, crop each detection and save it as new image
-        if FLAGS.crop:
-            crop_rate = 150 # capture images every so many frames (ex. crop photos every 150 frames)
-            crop_path = os.path.join(os.getcwd(), 'detections', 'crop', video_name)
-            try:
-                os.mkdir(crop_path)
-            except FileExistsError:
-                pass
-            if frame_num % crop_rate == 0:
-                final_path = os.path.join(crop_path, 'frame_' + str(frame_num))
-                try:
-                    os.mkdir(final_path)
-                except FileExistsError:
-                    pass          
-                crop_objects(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), pred_bbox, final_path, allowed_classes)
-            else:
-                pass
-
-        if FLAGS.count:
-            # count people found
-            counted_classes = count_objects(pred_bbox, by_class = True, allowed_classes=allowed_classes)
-            # loop through dict and print
-            for key, value in counted_classes.items():
-                print("Number of people: {}".format(key, value))
-            image = utils.draw_bbox(frame, pred_bbox, colors, FLAGS.info, counted_classes, allowed_classes=allowed_classes, read_plate=FLAGS.plate)
-        else:
-            image = utils.draw_bbox(frame, pred_bbox, colors, FLAGS.info, allowed_classes=allowed_classes, read_plate=FLAGS.plate)
+# ==============================================================
                                         
+        # SAVING OUTPUT VIDEO
+
+        tl_colors = infer_tl(frame, len(class_names), class_names, pred_bbox)
+        image = utils.draw_bbox(frame, pred_bbox, tl_colors, FLAGS.info, num_people, read_plate=FLAGS.plate)
+
         fps = 1.0 / (time.time() - start_time)
         print("FPS: %.2f" % fps)
         result = np.asarray(image)
@@ -176,6 +180,8 @@ def main(_argv):
             out.write(result)
         if cv2.waitKey(1) & 0xFF == ord('q'): break
     cv2.destroyAllWindows()
+
+# ==============================================================
 
 if __name__ == '__main__':
     try:
