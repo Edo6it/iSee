@@ -145,11 +145,11 @@ def main(_argv):
         check_crosswalk(pred_bbox)
 
         # perform check state every 50 frames
-        if (frame_num % 50) == 0: 
-            state = check_state(pred_bbox, isSidewalk)
+        state = check_state(pred_bbox, isSidewalk)
 
-        # TODO: - In base allo stato facciamo quello che dobbiamo fare
-        # ... 
+        # TODO: - In base allo stato facciamo quello che dobbiamo fare, ogni 50 frame
+        if (frame_num % 50) == 0:
+            ...  
 
 # ==============================================================
 
