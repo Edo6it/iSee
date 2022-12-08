@@ -112,13 +112,12 @@ def infer_tl(img, num_classes, allowed_classes, data):
 # ==============================================================
 
 # FSM
+char = Char()
 
-def check_state(data, isSidewalk = False):
-    char = Char()
-    curState = char.FSM.curState.state 
+def check_state(data, isSidewalk, state):
     _, _, classes, _ = data
-
-    futureState = curState
+    
+    curState = state
 
     # Check
     if curState == State.NoState.value and isSidewalk : futureState = State.Walking.value
@@ -130,24 +129,82 @@ def check_state(data, isSidewalk = False):
     if curState == State.Crossing.value and 'crosswalk' not in classes and isSidewalk : futureState = State.Walking.value
     if curState == State.Crossing.value and not isSidewalk and 'crosswalk' not in classes : futureState = State.NoState.value 
 
-    # Transition
-    if futureState != curState:
-        char.FSM.setTransition("to" + futureState)
-        char.FSM.execute()
+    return futureState
 
-    return char.FSM.curState
+def perform_transition(history):
+    # 0 NoState, 1 Walking, 2 Crossing
+    counter = {'NoState':0, 'Walking':0, 'Crossing':0}
+
+    for state in history:
+        if state in State.Walking.value:
+            counter['Walking'] += 1
+        elif state in State.Crossing.value:
+            counter['Crossing'] += 1
+        else:
+            counter['NoState'] += 1
+
+    futureState = max(counter, key=counter.get)
+
+    char.FSM.setTransition("to" + futureState)
+    char.FSM.execute()
 
 # ==============================================================
 
 # CHECK CROSSWALK AND ITS DISTANCE
-def check_crosswalk(data):
-    pass 
+def check_crosswalk(data, center):
+    th = 250000.0
+    walk = False 
+    boxes, scores, classes, num_objects = data
+
+    class_names = read_class_names(cfg.YOLO.CLASSES)
+
+    # loop through total number of objects found
+    for i in range(num_objects):
+        # grab class index and convert into corresponding class name
+        class_index = int(classes[i])
+        class_name = class_names[class_index]
+
+        if class_name in 'crosswalk':
+            score = scores[i]
+            if score < 0.6:
+                continue
+
+            xmin, ymin, xmax, ymax = boxes[i]
+
+            p1 = np.array((xmin, ymin))
+            p2 = np.array((xmax, ymin))
+            p3 = np.array((xmin, ymax))
+
+            h = np.linalg.norm(p1 - p3)
+            w = np.linalg.norm(p1 - p2)
+
+            area = h * w
+            print(f'Area of bbox: {area}\n')
+
+            bbox_center = np.array(((xmin+xmax) // 2, (ymin+ymax) // 2))
+
+            if (bbox_center[0] >= center[0] - 400 and bbox_center[0] <= center[0] + 400) and bbox_center[1] > center[1]:
+                walk = True 
+
+            if area > th and walk:
+                # the crosswalk is in front of me
+                # ovviamente è quella da tenere in considerazione, quindi ignoro altre eventuali strisce
+                print("Striscia davanti a te")
+                return True
+            else:
+                # the crosswalk is perpendicular to the road
+                # calcolo la distanza tra le strisce trovate e tengo quella più vicina dalla mia posizione attuale
+                print("Individuata striscia pedonale a tot metri")
+                return False 
+            
+        else:
+            continue
 
 # ==============================================================
 
 # CHECK SIDEWALK
 def check_sidewalk():
-    pass 
+    return True if random.randint(0,1) == 1 else False 
 
 # ==============================================================
 

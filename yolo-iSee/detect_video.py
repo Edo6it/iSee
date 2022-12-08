@@ -83,6 +83,7 @@ def main(_argv):
     # VIDEO INFER LOOP
 
     frame_num = 0
+    state_history = ['NoState']
     while True:
         return_value, frame = vid.read()
         if return_value:
@@ -128,7 +129,10 @@ def main(_argv):
 
         # format bounding boxes from normalized ymin, xmin, ymax, xmax ---> xmin, ymin, xmax, ymax
         original_h, original_w, _ = frame.shape
+        center = np.array((original_w // 2, original_h // 2))
+
         bboxes = utils.format_boxes(boxes.numpy()[0], original_h, original_w)
+
 
         pred_bbox = [bboxes, scores.numpy()[0], classes.numpy()[0], valid_detections.numpy()[0]]
 
@@ -142,14 +146,20 @@ def main(_argv):
         isSidewalk = check_sidewalk()
 
         # TODO: - check crosswalk and distance
-        check_crosswalk(pred_bbox)
+        isWalking = check_crosswalk(pred_bbox, center)
 
-        # perform check state every 50 frames
-        state = check_state(pred_bbox, isSidewalk)
+        # # perform check state
+        state = check_state(pred_bbox, isSidewalk, state_history[-1:][0])
+        print(state)
 
-        # TODO: - In base allo stato facciamo quello che dobbiamo fare, ogni 50 frame
+        state_history.append(state)
+
+        # # TODO: - In base allo stato facciamo quello che dobbiamo fare, ogni 50 frame
         if (frame_num % 50) == 0:
-            ...  
+            print(state_history)
+
+            perform_transition(state_history)
+            state_history.clear()
 
 # ==============================================================
 
@@ -158,7 +168,8 @@ def main(_argv):
         num_people = count_objects(pred_bbox)
         
         for key, value in num_people.items():
-            print("Number of people: {}".format(key, value))
+            if key in 'person':
+                print("Number of people: {}".format(value))
 
 # ==============================================================
                                         
