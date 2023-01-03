@@ -83,7 +83,9 @@ def main(_argv):
     # VIDEO INFER LOOP
 
     frame_num = 0
+    last_state = 'NoState'
     state_history = ['NoState']
+    ts = time.time()
     while True:
         return_value, frame = vid.read()
         if return_value:
@@ -142,24 +144,33 @@ def main(_argv):
 
         # FSM
 
-        # TODO: - check sidewalk
+        # check sidewalk
         isSidewalk = check_sidewalk()
 
-        # TODO: - check crosswalk and distance
-        isWalking = check_crosswalk(pred_bbox, center)
+        # check if the user is going to cross 
+        isCrossing, distance = check_crossing(pred_bbox, center)
 
-        # # perform check state
-        state = check_state(pred_bbox, isSidewalk, state_history[-1:][0])
-        print(state)
+        # check traffic lights and their state 
+        tl_colors = check_tl(frame, len(class_names), class_names, pred_bbox)
+
+        # perform check state
+        state = check_state(isSidewalk, isCrossing, state_history[-1:][0])
 
         state_history.append(state)
 
-        # # TODO: - In base allo stato facciamo quello che dobbiamo fare, ogni 50 frame
+        # every 50 frames we perform the action based on the state we are in 
         if (frame_num % 50) == 0:
-            print(state_history)
-
             perform_transition(state_history)
+
+            last_state = state_history[-1:][0]
             state_history.clear()
+            state_history.append(last_state)
+
+        # every 5 sec perform the cur state action
+        if time.time() - ts > 5:
+            perform_action(distance, tl_colors)
+            ts = time.time()
+        
 
 # ==============================================================
 
@@ -174,9 +185,7 @@ def main(_argv):
 # ==============================================================
                                         
         # SAVING OUTPUT VIDEO
-
-        tl_colors = infer_tl(frame, len(class_names), class_names, pred_bbox)
-        image = utils.draw_bbox(frame, pred_bbox, tl_colors, FLAGS.info, num_people, read_plate=FLAGS.plate)
+        image = utils.draw_bbox(frame, pred_bbox, tl_colors, last_state, FLAGS.info, num_people, read_plate=FLAGS.plate)
 
         fps = 1.0 / (time.time() - start_time)
         print("FPS: %.2f" % fps)

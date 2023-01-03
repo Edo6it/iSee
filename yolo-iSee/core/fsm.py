@@ -15,7 +15,7 @@ class Transition(object):
         self.toState = toState
 
     def execute(self):
-        print("Transitioning to " + self.toState)
+        print(f"\n\n TRANSITIONING TO {self.toState} \n\n") 
 
 # =================================
 
