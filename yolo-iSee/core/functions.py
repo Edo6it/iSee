@@ -114,7 +114,7 @@ def check_tl(img, num_classes, allowed_classes, data):
 # FSM
 char = Char()
 
-def check_state(isSidewalk, isCrossing, state):
+def check_state(isSidewalk, isCrossing, tl_colors, state):
     curState = state
     futureState = curState 
 
@@ -127,6 +127,7 @@ def check_state(isSidewalk, isCrossing, state):
 
     if curState == State.Crossing.value and not isCrossing and isSidewalk : futureState = State.Walking.value
     if curState == State.Crossing.value and not isSidewalk and not isCrossing : futureState = State.NoState.value 
+    if curState == State.Crossing.value and not tl_colors : futureState = State.CrossingNoTl.value
 
     return futureState
 
@@ -146,7 +147,7 @@ def perform_transition(history):
     char.FSM.setTransition("to" + futureState)
     char.FSM.execute()
 
-def perform_action(distance, tl_colors):
+def perform_action(distance, tl_colors, isCars):
     state = char.FSM.curState
 
     if state == "Walking":
@@ -155,8 +156,15 @@ def perform_action(distance, tl_colors):
     
     elif state == "Crossing":
         if tl_colors:
-            print("Il semaforo è: verde")
+            print("Il semaforo è verde")
 
+    elif state == "CrossingNoTL":
+        if isCars:
+            print("Macchina in arrivo, attendere\n \
+                Guarda a sx e a dx")
+        else:
+            print("Attraversa")
+        
 # ==============================================================
 
 # CHECK CROSSWALK AND ITS DISTANCE
@@ -205,6 +213,13 @@ def check_crossing(data, center):
 # CHECK SIDEWALK
 def check_sidewalk():
     return True if random.randint(0,1) == 1 else False 
+
+# ==============================================================
+
+# CHECK CARS 
+def check_cars():
+    # ritorna True se trova almeno una macchina 
+    pass 
 
 # ==============================================================
 

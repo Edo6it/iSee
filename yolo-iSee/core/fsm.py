@@ -7,6 +7,7 @@ class State(Enum):
     NoState = "NoState"
     Walking = "Walking"
     Crossing = "Crossing"
+    CrossingNoTl = "CrossingNoTl"
 
 # =================================
 

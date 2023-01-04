@@ -85,7 +85,9 @@ def main(_argv):
     frame_num = 0
     last_state = 'NoState'
     state_history = ['NoState']
+    isCars = False 
     ts = time.time()
+
     while True:
         return_value, frame = vid.read()
         if return_value:
@@ -153,8 +155,14 @@ def main(_argv):
         # check traffic lights and their state 
         tl_colors = check_tl(frame, len(class_names), class_names, pred_bbox)
 
+        # TODO: - check cars
+        if last_state == "CrossingNoTl" and not isCars:
+            isCars = check_cars()
+        elif last_state != "CrossingNoTl":
+            isCars = False 
+
         # perform check state
-        state = check_state(isSidewalk, isCrossing, state_history[-1:][0])
+        state = check_state(isSidewalk, isCrossing, tl_colors, state_history[-1:][0])
 
         state_history.append(state)
 
@@ -168,9 +176,8 @@ def main(_argv):
 
         # every 5 sec perform the cur state action
         if time.time() - ts > 5:
-            perform_action(distance, tl_colors)
+            perform_action(distance, tl_colors, isCars)
             ts = time.time()
-        
 
 # ==============================================================
 
