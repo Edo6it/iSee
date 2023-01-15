@@ -271,10 +271,10 @@ def draw_bbox(image, bboxes, tl_colors, state, info = False, counted_classes = N
                 print("Object found: {}, Confidence: {:.2f}, BBox Coords (xmin, ymin, xmax, ymax): {}, {}, {}, {} ".format(class_name, score, coor[0], coor[1], coor[2], coor[3]))
 
             if show_label:
-                if class_name in 'traffic_light':
-                    bbox_mess = '%s: %.2f' % (class_name + ' ' + tl_colors[coor[0], coor[1], coor[2], coor[3]], score)
-                else:
-                    bbox_mess = '%s: %.2f' % (class_name, score)
+                # if class_name in 'traffic_light':
+                #     bbox_mess = '%s: %.2f' % (class_name + ' ' + tl_colors[coor[0], coor[1], coor[2], coor[3]], score)
+                # else:
+                bbox_mess = '%s: %.2f' % (class_name, score)
                 t_size = cv2.getTextSize(bbox_mess, 0, fontScale, thickness=bbox_thick // 2)[0]
                 c3 = (c1[0] + t_size[0], c1[1] - t_size[1] - 3)
                 cv2.rectangle(image, c1, (np.float32(c3[0]), np.float32(c3[1])), bbox_color, -1) #filled
