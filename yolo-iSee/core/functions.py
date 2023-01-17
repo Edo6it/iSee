@@ -7,7 +7,8 @@ import pytesseract
 from core.utils import read_class_names
 from core.config import cfg
 from core.fsm import *
-
+from sidewalk_detection.sidewalk_main import find
+from sidewalk_detection.sidewalk_class import sidewalk
 # ==============================================================
 
 # PEOPLE COUNTER
@@ -69,45 +70,100 @@ def crop_objects(img, data, path, allowed_classes):
 
 # STATE TRAFFIC LIGHTS (red, yellow, green)
 
+def crop_region(cropped_img):
+    #togliamo un ulteriore 3% di immagine da ogni lato del bounding box
+    crop_height = cropped_img.shape[0]
+    crop_width = cropped_img.shape[1]
+    crop_frame = cropped_img[int(crop_height*0.08):int(crop_height - (crop_height*0.08)), int(crop_width*0.08):int(crop_width- (crop_width*0.08))]
+    #print(crop_height, crop_width, crop_frame.shape[0], crop_frame.shape[1])
+
+    #Divido in 3 regioni, una per ogni colore
+    region_height = int(crop_frame.shape[0]/3)
+    region_width = crop_frame.shape[1]
+    #print(region_height)
+    reg1 = crop_frame[0:region_height, 0:region_width]
+    
+    reg2 = crop_frame[region_height+1:region_height*2, 0:region_width]
+    
+    reg3 = crop_frame[region_height*2+1:crop_frame.shape[0], 0:region_width]
+    
+    return reg1, reg2, reg3
+
+
 def check_tl(img, num_classes, allowed_classes, data):
     colors = dict()
     out_boxes, _, out_classes, num_boxes = data 
+    j=0
 
     for i in range(num_boxes):
-        if int(out_classes[i]) < 0 or int(out_classes[i]) > num_classes: continue
+        if int(out_classes[i]) < 0 or int(out_classes[i]) >= num_classes: continue  #PENSO SIA >=
         coor = out_boxes[i]
         class_ind = int(out_classes[i])
         class_name = allowed_classes[class_ind]
+
         if class_name not in 'traffic_light':
             continue
         else: 
             xmin, ymin, xmax, ymax = coor
 
             cropped_img = img[int(ymin):int(ymax), int(xmin):int(xmax)]
-            hsv_image = cv2.cvtColor(cropped_img, cv2.COLOR_RGB2HSV)
+            
+            #dividiamo l'immagine in 3 regioni
+            reg1, reg2, reg3 = crop_region(cropped_img)
+         
+            #hsv_image = cv2.cvtColor(cropped_img, cv2.COLOR_RGB2HSV)
+            hsv_reg1 = cv2.cvtColor(reg1, cv2.COLOR_BGR2HSV)
+            hsv_reg2 = cv2.cvtColor(reg2, cv2.COLOR_BGR2HSV)
+            hsv_reg3 = cv2.cvtColor(reg3, cv2.COLOR_BGR2HSV)
 
-            lower_g = np.array([36,50,20]) 
-            upper_g = np.array([75,255,255]) 
+            #Definisco gli intervalli per i colori
+            lower_g = np.array([36,50,70]) 
+            upper_g = np.array([79,255,255]) 
 
-            lower_y = np.array([20,50,20])  
+            lower_y = np.array([26, 50, 70])  
             upper_y = np.array([31,255,255]) 
 
-            lower_r = np.array([0,50,20])  
-            upper_r = np.array([10,255,255]) 
+            lower_r = np.array([0, 50, 70])  
+            upper_r = np.array([23, 255, 255]) 
 
-            gmask = cv2.inRange(hsv_image, lower_g, upper_g)
-            ymask = cv2.inRange(hsv_image, lower_y, upper_y)
-            rmask = cv2.inRange(hsv_image, lower_r, upper_r)
+            lower_r2 = np.array([160,100,20])
+            upper_r2 = np.array([179,255,255])
+
+            lower_w = np.array([0,0,180])
+            upper_w = np.array([255,255,255])
+
+            gmask = cv2.inRange(hsv_reg3, lower_g, upper_g)
+            ymask = cv2.inRange(hsv_reg2, lower_y, upper_y)
+            rmask = cv2.inRange(hsv_reg1, lower_r, upper_r)
+            r2mask = cv2.inRange(hsv_reg1, lower_r2, upper_r2) 
+
+            gmask_w = cv2.inRange(hsv_reg3, lower_w, upper_w)
+            ymask_w = cv2.inRange(hsv_reg2, lower_w, upper_w)
+            rmask_w = cv2.inRange(hsv_reg1, lower_w, upper_w) 
 
             color = ['green', 'yellow', 'red']
+            count_g = cv2.countNonZero(gmask)
+            count_y = cv2.countNonZero(ymask)
+            count_r = cv2.countNonZero(rmask)+cv2.countNonZero(r2mask)
             pixels = []
-            pixels.append(cv2.countNonZero(gmask))
-            pixels.append(cv2.countNonZero(ymask))
-            pixels.append(cv2.countNonZero(rmask))
+            if (count_g > 0):
+                pixels.append(count_g+cv2.countNonZero(gmask_w))
+            else:
+                pixels.append(count_g)
+            if (count_y > 0):
+                pixels.append(count_y+cv2.countNonZero(ymask_w))
+            else:
+                pixels.append(count_y)
+            if (count_r > 0):
+                pixels.append(count_r+cv2.countNonZero(rmask_w))
+            else:
+                pixels.append(count_r)
+            #print(pixels)
 
-            colors[(coor[0], coor[1], coor[2], coor[3])] = color[pixels.index(max(pixels))]
-
-    return colors 
+            if (max(pixels)>35):
+                colors[j] = color[pixels.index(max(pixels))]
+                j += 1
+    return colors
 
 # ==============================================================
 
@@ -129,16 +185,22 @@ def check_state(isSidewalk, isCrossing, tl_colors, state):
     if curState == State.Crossing.value and not isSidewalk and not isCrossing : futureState = State.NoState.value 
     if curState == State.Crossing.value and not tl_colors : futureState = State.CrossingNoTl.value
 
+    if curState == State.CrossingNoTl.value and tl_colors : futureState = State.Crossing.value
+    if curState == State.CrossingNoTl.value and not isCrossing and isSidewalk : futureState = State.Walking.value
+    if curState == State.CrossingNoTl.value and not isSidewalk and not isCrossing : futureState = State.NoState.value 
+
     return futureState
 
 def perform_transition(history):
-    counter = {'NoState':0, 'Walking':0, 'Crossing':0}
+    counter = {'NoState':0, 'Walking':0, 'Crossing':0, 'CrossingNoTl':0}
 
     for state in history:
         if state in State.Walking.value:
             counter['Walking'] += 1
         elif state in State.Crossing.value:
             counter['Crossing'] += 1
+        elif state in State.CrossingNoTl.value:
+            counter['CrossingNoTl'] += 1
         else:
             counter['NoState'] += 1
 
@@ -152,11 +214,11 @@ def perform_action(distance, tl_colors, isCars):
 
     if state == "Walking":
         if distance:
-            print("Striscia individuata a " + distance)
+            print(f"Striscia individuata a {distance}")
     
     elif state == "Crossing":
         if tl_colors:
-            print("Il semaforo è verde")
+            print(f"Il semaforo è {tl_colors[0]}")
 
     elif state == "CrossingNoTL":
         if isCars:
@@ -171,11 +233,13 @@ def perform_action(distance, tl_colors, isCars):
 def check_crossing(data, center):
     th = 250000.0
     cross = False  
-    distance = ""
+    distance = 0
     boxes, scores, classes, num_objects = data
-
+    min_distance = 20
     indeces = np.where(classes[:num_objects] == 1.)[0]
     cross_boxes, cross_scores = [boxes[i] for i in indeces.tolist()], [scores[i] for i in indeces.tolist()]
+    f = 1660
+    crosswalk_width = 3
 
     for i in range(len(indeces.tolist())):
         if cross_scores[i] < 0.6:
@@ -204,22 +268,82 @@ def check_crossing(data, center):
         else:
             # the crosswalk is perpendicular to the road
             # compute the distance with the crosswalks we found and keep the closest one 
-            distance = "2 metri"
+            distance = (f * crosswalk_width) / w
+            print(f'\nDISTANCE: {distance}\n')
+            if distance < min_distance:
+                min_distance = distance
 
     return cross, distance 
 
 # ==============================================================
 
 # CHECK SIDEWALK
-def check_sidewalk():
-    return True if random.randint(0,1) == 1 else False 
+def add_sidewalk(self: sidewalk, frame, color_left=(0,0,0), color_right=(255,255,255), size=20):
+    if(self.left_line.slope is None and self.right_line.slope is None):
+        return frame
+
+    frame = cv2.line(frame, self.left_line.point_low, self.left_line.point_up, color_left, size, cv2.LINE_AA)
+    frame = cv2.line(frame, self.right_line.point_low, self.right_line.point_up, color_right, size, cv2.LINE_AA)
+    frame = cv2.line(frame, self.mid_line.point_low, self.mid_line.point_up, (120,60,90), size, cv2.LINE_AA)
+    return frame
+
+
+def information(side: sidewalk, state):
+    #get the slope of the line, to understand if the sidewalk is straight or turning (left or right)
+    #print(side.mid_line.slope)
+    if(side.mid_line.slope is None or state != "Walking"):
+        return side
+
+    if(side.count >= 60):
+        if(side.mid_line.slope > -1.2 and side.mid_line.slope < 0):
+            print("Il marciapiede curva verso destra")
+            side.count = 0
+        elif(side.mid_line.slope > 0 and side.mid_line.slope < 1.2):
+            print("Il marciapiede curva verso sinistra")
+            side.count = 0
+        
+        #get position of the sidewalk relatively to the person perspective
+        point_left = side.left_line.mean_point()
+        point_right = side.right_line.mean_point()
+        reference_point = (960, 540)
+        if(point_right[0] < reference_point[0]):
+            print("sei alla destra del marciapiede, accentrati verso sinistra")
+            side.count = 0
+        elif(point_left[0] > reference_point[0]):
+            print("sei alla sinistra del marciapiede, accentrati verso destra")
+            side.count = 0
+    else:
+        side.count += 1
+
+    return side
+
+
+
+def check_sidewalk(frame, side: sidewalk, state):
+    side = find(frame, side)
+    side = information(side, state)
+
+    if(side.mid_line.slope is None):
+        return False, side
+    else:
+        return True, side
 
 # ==============================================================
 
 # CHECK CARS 
-def check_cars():
-    # ritorna True se trova almeno una macchina 
-    pass 
+def check_cars(num_classes, allowed_classes, data):
+    _, _, out_classes, num_boxes = data 
+    car_presence = False
+    for i in range(num_boxes):
+        if int(out_classes[i]) < 0 or int(out_classes[i]) >= num_classes: continue 
+        class_ind = int(out_classes[i])
+        class_name = allowed_classes[class_ind]
+        if class_name not in 'car':
+            continue    
+        else:
+            car_presence = True
+            break
+    return car_presence
 
 # ==============================================================
 

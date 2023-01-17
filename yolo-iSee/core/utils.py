@@ -245,6 +245,9 @@ def draw_bbox(image, bboxes, tl_colors, state, info = False, counted_classes = N
     random.seed(None)
 
     out_boxes, out_scores, out_classes, num_boxes = bboxes
+    cv2.putText(image, f"State: {state}", (15, 15), 
+                        cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 0, 0), 2)
+
     for i in range(num_boxes):
         if int(out_classes[i]) < 0 or int(out_classes[i]) > num_classes: continue
         coor = out_boxes[i]
@@ -271,10 +274,10 @@ def draw_bbox(image, bboxes, tl_colors, state, info = False, counted_classes = N
                 print("Object found: {}, Confidence: {:.2f}, BBox Coords (xmin, ymin, xmax, ymax): {}, {}, {}, {} ".format(class_name, score, coor[0], coor[1], coor[2], coor[3]))
 
             if show_label:
-                # if class_name in 'traffic_light':
-                #     bbox_mess = '%s: %.2f' % (class_name + ' ' + tl_colors[coor[0], coor[1], coor[2], coor[3]], score)
-                # else:
-                bbox_mess = '%s: %.2f' % (class_name, score)
+                #if class_name in 'traffic_light' and (coor[0], coor[1], coor[2], coor[3]) in tl_colors:
+                #    bbox_mess = '%s: %.2f' % (class_name + ' ' + tl_colors[coor[0], coor[1], coor[2], coor[3]], score)
+                #else:
+                bbox_mess = '%s' % (class_name)
                 t_size = cv2.getTextSize(bbox_mess, 0, fontScale, thickness=bbox_thick // 2)[0]
                 c3 = (c1[0] + t_size[0], c1[1] - t_size[1] - 3)
                 cv2.rectangle(image, c1, (np.float32(c3[0]), np.float32(c3[1])), bbox_color, -1) #filled
@@ -282,8 +285,6 @@ def draw_bbox(image, bboxes, tl_colors, state, info = False, counted_classes = N
                 cv2.putText(image, bbox_mess, (c1[0], np.float32(c1[1] - 2)), cv2.FONT_HERSHEY_SIMPLEX,
                         fontScale, (0, 0, 0), bbox_thick // 2, lineType=cv2.LINE_AA)
 
-                cv2.putText(image, f"State: {state}", (15, 15), 
-                        cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 0, 0), 2)
 
             if counted_classes != None:
                 for key, value in counted_classes.items():

@@ -53,11 +53,12 @@ class Char(object):
         self.FSM.states["NoState"] = State.NoState.value
         self.FSM.states["Walking"] = State.Walking.value
         self.FSM.states["Crossing"] = State.Crossing.value
+        self.FSM.states["CrossingNoTl"] = State.CrossingNoTl.value
 
         self.FSM.transitions["toWalking"] = Transition("Walking")
         self.FSM.transitions["toCrossing"] = Transition("Crossing")
         self.FSM.transitions["toNoState"] = Transition("NoState")
-
+        self.FSM.transitions["toCrossingNoTl"] = Transition("CrossingNoTl")
         self.FSM.setState("NoState")
 
 # =================================

@@ -1,7 +1,10 @@
 import numpy as np
 import cv2
-from math import dist
+import math
 
+
+def dist(a, b):
+    return np.linalg.norm(np.array(a)-np.array(b))
 
 
 class line:
@@ -83,46 +86,144 @@ class line:
 
 
 
+
+
 class sidewalk:
     def __init__(self):
+        self.count = 0
         self.left_line = line()
         self.right_line = line()
         self.mid_line = line()
-        self.width_up = 0
-        self.width_low = 0
+        self.width_up = [0]*20
+        self.width_low = [0]*20
+        self.mean_width_up = 0
+        self.mean_width_low = 0
+        self.median_color = [0, 0, 0]
 
 
-    def update(self, lineA: line, lineB: line, frame, sigma=1):
-        if(self.right_line.slope is not None):
-            return 
+    #update lines based on previous info
+    def update(self, lineA: line, lineB: line, frame):
+
+        if (lineA is None and lineB is None):
+            left_line, right_line = self.update_no_lines()
+        elif (lineB is None):
+            left_line, right_line = self.update_one_line(lineA)
+        else:
+            left_line, right_line = self.update_two_lines(lineA, lineB)
+
+        self.set_lines(left_line, right_line)
+
+        self.set_mid_line()
+        self.set_width(lineA, lineB)
+
+        self.mean_width_low = get_mean_width(self.width_low)
+        self.mean_width_up = get_mean_width(self.width_up)
+
+
+    #if 10 consecutive frames have no lines, than sidewalk is no longer seen
+    def update_no_lines(self):
+        left_line = line()
+        right_line = line()
+        if(self.mean_width_low == 0):
+            return left_line, right_line
+        
+        left_line.points_from_line(self.left_line)
+        right_line.points_from_line(self.right_line)
+        return left_line, right_line
+
+
+    #get info from previous lines (if there are none, than get back to no lines)
+    def update_one_line(self, lineA: line):
+        left_line = line()
+        right_line = line()
+        
+        if(self.mean_width_low == 0):
+            return left_line, right_line
+
+        d_r = dist(lineA.mean_point(), self.right_line.mean_point())
+        d_l = dist(lineA.mean_point(), self.left_line.mean_point())
+
+        if(d_r < d_l):
+            right_line.points_from_line(lineA)
+            point_up = (lineA.point_up[0] - self.mean_width_up, lineA.point_up[1])
+            point_low = (lineA.point_low[0] - self.mean_width_low, lineA.point_low[1])
+            left_line.points_from_coord(point_low[0], point_low[1], point_up[0], point_up[1])
+        else:
+            left_line.points_from_line(lineA)
+            point_up = (lineA.point_up[0] + self.mean_width_up, lineA.point_up[1])
+            point_low = (lineA.point_low[0] + self.mean_width_low, lineA.point_low[1])
+            right_line.points_from_coord(point_low[0], point_low[1], point_up[0], point_up[1])
+        
+        return left_line, right_line
+
+
+    #use the two lines as the new sidewalk boundary
+    def update_two_lines(self, lineA: line, lineB: line):
+        left_line = line()
+        right_line = line()
 
         if(lineA.mean_point()[0] < lineB.mean_point()[0]):
-            self.left_line.points_from_line(lineA)
-            self.right_line.points_from_line(lineB)
+            left_line.points_from_line(lineA)
+            right_line.points_from_line(lineB)
         else:
-            self.left_line.points_from_line(lineB)
-            self.right_line.points_from_line(lineA)
+            left_line.points_from_line(lineB)
+            right_line.points_from_line(lineA)
 
-        #self.right_line = self.right_line * (1-sigma) + right * sigma
-        #self.left_line = self.left_line * (1-sigma) + left * sigma
-
-        self.set_width()
-        self.set_mid_line()
-        self.set_color(frame)
+        return left_line, right_line
 
 
-    def set_width(self):
-        point_r = self.right_line.point_up
-        point_l = self.left_line.point_up
-        self.width_up = dist(point_l, point_r)
+    def set_lines(self, left_line: line, right_line: line):
+        if(left_line.slope is None and right_line.slope is None):
+            self.left_line = line()
+            self.right_line = line()
+            return 
+        
+        if(self.mean_width_low == 0):
+            self.left_line = left_line
+            self.right_line = right_line
+            return
+        
+        x1, y1, x2, y2 = update_line_sidewalk(self.left_line, left_line, 0.8)
+        self.left_line.points_from_coord(x1, y1, x2, y2)
+        x1, y1, x2, y2 = update_line_sidewalk(self.right_line, right_line, 0.8)
+        self.right_line.points_from_coord(x1, y1, x2, y2)
 
-        point_r = self.right_line.point_low
-        point_l = self.left_line.point_low
-        self.width_low = dist(point_l, point_r)
+        return
+
+
+    def set_width(self, lineA: line, lineB: line):
+        self.width_low.pop(0)
+        self.width_up.pop(0)
+
+        if(lineA is None and lineB is None):
+            self.width_up.append(0)
+            self.width_low.append(0)
+            return
+
+        elif(lineB is None and self.mean_width_low == 0):
+            self.width_up.append(0)
+            self.width_low.append(0)
+            return
+
+        else:
+            point_r = self.right_line.point_up
+            point_l = self.left_line.point_up
+            width_up = dist(point_l, point_r)
+            self.width_up.append(width_up)
+
+            point_r = self.right_line.point_low
+            point_l = self.left_line.point_low
+            width_low = dist(point_l, point_r)
+            self.width_low.append(width_low)
+
         return
 
 
     def set_mid_line(self):
+        if(self.right_line.slope is None and self.left_line.slope is None):
+            self.mid_line = line()
+            return
+        
         #mean line of the two "edges" of the sidewalk
         x1, y1 = self.right_line.point_low[0]+self.left_line.point_low[0],   self.right_line.point_low[1]+self.left_line.point_low[1]
         x2, y2 = self.right_line.point_up[0]+self.left_line.point_up[0],   self.right_line.point_up[1]+self.left_line.point_up[1]
@@ -130,40 +231,54 @@ class sidewalk:
 
 
     def set_color(self, frame):
+        if(self.right_line.slope is None and self.left_line.slope is None):
+            self.median_color= [0, 0, 0]
+            return
+
         polygon = np.array([
                        [self.left_line.point_low, self.left_line.point_up, self.right_line.point_up, self.right_line.point_low]
                        ])
         
         mask = np.zeros_like(frame)
         mask = cv2.fillPoly(mask, polygon, (255,255,255))
-        #cv2.imwrite("C:\\Users\\ilcai\\Pictures\\side.png", mask)
+
         colors = cv2.bitwise_and(frame, mask)
+        colors = cv2.resize(colors, (192, 108), interpolation=cv2.INTER_AREA)
+
+        pixels = []
+        for row in colors:
+            for pixel in row:
+                if(pixel.sum() != 0):
+                    pixels.append(pixel)
+        pixels = np.array(pixels)
+
+        self.median_color = np.median(pixels, axis=0)
         return
 
 
-    def add_sidewalk(self, frame, color_left=(0,0,0), color_right=(255,255,255), size=7):
-        frame = cv2.line(frame, self.left_line.point_low, self.left_line.point_up, color_left, size, cv2.LINE_AA)
-        frame = cv2.line(frame, self.right_line.point_low, self.right_line.point_up, color_right, size, cv2.LINE_AA)
-        frame = cv2.line(frame, self.mid_line.point_low, self.mid_line.point_up, (120,60,90), size, cv2.LINE_AA)
-        return frame
 
 
-    def information(self):
-        #get the slope of the line, to understand if the sidewalk is straight or turning (left or right)
-        if(self.mid_line.slope == 0):
-            print("Errore!")
-        elif(self.mid_line.slope > -0.2 and self.mid_line.slope < 0):
-            print("Il marciapiede curva verso destra")
-        elif(self.mid_line.slope > 0 and self.mid_line.slope < 0.2):
-            print("Il marciapiede curva verso sinistra")
-        else:
-            print("Il marciapiede prosegue diritto")
+
+def update_line_sidewalk(self: line, line: line, sigma: float):
         
-        #get position of the sidewalk relatively to the person perspective
-        point = self.mid_line.mean_point()
-        reference_point = (960, 540)
-        if(point[0] < reference_point[0]):
-            print("sei sulla destra del marciapiede, accentrati verso sinistra")
-        if(point[0] > reference_point[0]):
-            print("sei sulla sinistra del marciapiede, accentrati verso destra")
+    x1 = int((1-sigma)*self.point_low[0] + sigma*line.point_low[0])
+    y1 = int((1-sigma)*self.point_low[1] + sigma*line.point_low[1])
 
+    x2 = int((1-sigma)*self.point_up[0] + sigma*line.point_up[0])
+    y2 = int((1-sigma)*self.point_up[1] + sigma*line.point_up[1])
+
+    return x1, y1, x2, y2
+
+
+def get_mean_width(widths: list):
+    wid = np.array(widths)
+
+    if(np.size(wid) == 0):
+        return 0
+
+    wid = wid[wid!=0]
+
+    if(np.size(wid) == 0):
+        return 0
+    else:
+        return int(np.mean(wid))

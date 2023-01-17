@@ -17,7 +17,7 @@ import cv2
 import numpy as np
 from tensorflow.compat.v1 import ConfigProto
 from tensorflow.compat.v1 import InteractiveSession
-
+from sidewalk_detection import *
 # ==============================================================
 
 # FLAGS 
@@ -87,7 +87,8 @@ def main(_argv):
     state_history = ['NoState']
     isCars = False 
     ts = time.time()
-
+    side = sidewalk()
+    
     while True:
         return_value, frame = vid.read()
         if return_value:
@@ -147,7 +148,7 @@ def main(_argv):
         # FSM
 
         # check sidewalk
-        isSidewalk = check_sidewalk()
+        isSidewalk, side = check_sidewalk(frame, side, state_history[-1:][0])
 
         # check if the user is going to cross 
         isCrossing, distance = check_crossing(pred_bbox, center)
@@ -157,7 +158,7 @@ def main(_argv):
 
         # TODO: - check cars
         if last_state == "CrossingNoTl" and not isCars:
-            isCars = check_cars()
+            isCars = check_cars(len(class_names), class_names, pred_bbox)
         elif last_state != "CrossingNoTl":
             isCars = False 
 
@@ -193,15 +194,15 @@ def main(_argv):
                                         
         # SAVING OUTPUT VIDEO
         image = utils.draw_bbox(frame, pred_bbox, tl_colors, last_state, FLAGS.info, num_people, read_plate=FLAGS.plate)
-
+        image = add_sidewalk(side, image)
         fps = 1.0 / (time.time() - start_time)
-        print("FPS: %.2f" % fps)
+        #print("FPS: %.2f" % fps)
         result = np.asarray(image)
         cv2.namedWindow("result", cv2.WINDOW_AUTOSIZE)
         result = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         
         if not FLAGS.dont_show:
-            cv2.imshow("result", result)
+            cv2.imshow("result", cv2.resize(result, (960, 540)))
         
         if FLAGS.output:
             out.write(result)
