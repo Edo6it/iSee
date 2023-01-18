@@ -158,7 +158,6 @@ def check_tl(img, num_classes, allowed_classes, data):
                 pixels.append(count_r+cv2.countNonZero(rmask_w))
             else:
                 pixels.append(count_r)
-            #print(pixels)
 
             if (max(pixels)>35):
                 colors[j] = color[pixels.index(max(pixels))]
@@ -307,10 +306,10 @@ def information(side: sidewalk, state):
         point_right = side.right_line.mean_point()
         reference_point = (960, 540)
         if(point_right[0] < reference_point[0]):
-            print("sei alla destra del marciapiede, accentrati verso sinistra")
+            print("sei alla destra del marciapiede")
             side.count = 0
         elif(point_left[0] > reference_point[0]):
-            print("sei alla sinistra del marciapiede, accentrati verso destra")
+            print("sei alla sinistra del marciapiede")
             side.count = 0
     else:
         side.count += 1

@@ -13,7 +13,7 @@ dist_thresh = 400
 def find(frame, side: sidewalk):
 
     #get the hough lines of the sidewalk
-    #frame = cv2.resize(frame, (960, 540))
+    frame = cv2.resize(frame, (1920, 1080))
     lines = factory_lines(frame)
 
     #compute the left and right lines of the sidewalk
@@ -24,15 +24,3 @@ def find(frame, side: sidewalk):
 
     return side
 
-
-
-
-'''img = "C:\\Users\\ilcai\\Videos\\Test_videos\\Video_iPhone5_Test1_Moment.jpg"
-frame = cv2.imread(img)
-frame = cv2.resize(frame, (960, 540))
-
-side = sidewalk()
-side = find(frame, side, 3)
-
-frame = add_sidewalk(side, frame)
-cv2.imwrite("total.png", frame)'''

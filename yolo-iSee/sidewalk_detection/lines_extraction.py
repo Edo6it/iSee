@@ -10,7 +10,7 @@ upper_gray = np.array([200, 50, 255])
 
 
 def preprocessing_gaussian(frame):
-    frame = cv2.GaussianBlur(frame, (5,5), 0)
+    frame = cv2.GaussianBlur(frame, (7,7), 0)
     return frame
 
 
@@ -42,8 +42,8 @@ def get_canny_bounds(frame, sigma=0.33):
 def get_region(frame):
     height, width = frame.shape
     polygon = np.array([
-                       [(int(0*width/1920), height), (int(520*width/1920), int(600*height/1080)), 
-                       (int(1400*width/1920), int(600*height/1080)), (int(width+0*width/1920), height)]
+                       [(int(-300*width/1920), height), (int(520*width/1920), int(600*height/1080)), 
+                       (int(1400*width/1920), int(600*height/1080)), (int(width+300*width/1920), height)]
                        ])
     mask = np.zeros_like(frame)
     mask = cv2.fillPoly(mask, polygon, 255)

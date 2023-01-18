@@ -85,6 +85,8 @@ def recognize_plate(img, coords):
     #cv2.waitKey(0)
     return plate_num
 
+
+
 def load_freeze_layer(model='yolov4', tiny=False):
     if tiny:
         if model == 'yolov3':
@@ -97,6 +99,7 @@ def load_freeze_layer(model='yolov4', tiny=False):
         else:
             freeze_layouts = ['conv2d_93', 'conv2d_101', 'conv2d_109']
     return freeze_layouts
+
 
 def load_weights(model, weights_file, model_name='yolov4', is_tiny=False):
     if is_tiny:
@@ -159,6 +162,7 @@ def read_class_names(class_file_name):
             names[ID] = name.strip('\n')
     return names
 
+
 def load_config(FLAGS):
     if FLAGS.tiny:
         STRIDES = np.array(cfg.YOLO.STRIDES_TINY)
@@ -175,12 +179,14 @@ def load_config(FLAGS):
 
     return STRIDES, ANCHORS, NUM_CLASS, XYSCALE
 
+
 def get_anchors(anchors_path, tiny=False):
     anchors = np.array(anchors_path)
     if tiny:
         return anchors.reshape(2, 3, 2)
     else:
         return anchors.reshape(3, 3, 2)
+
 
 def image_preprocess(image, target_size, gt_boxes=None):
     ih, iw    = target_size
@@ -203,6 +209,7 @@ def image_preprocess(image, target_size, gt_boxes=None):
         gt_boxes[:, [1, 3]] = gt_boxes[:, [1, 3]] * scale + dh
         return image_paded, gt_boxes
 
+
 # helper function to convert bounding boxes from normalized ymin, xmin, ymax, xmax ---> xmin, ymin, xmax, ymax
 def format_boxes(bboxes, image_height, image_width):
     for box in bboxes:
@@ -212,6 +219,7 @@ def format_boxes(bboxes, image_height, image_width):
         xmax = int(box[3] * image_width)
         box[0], box[1], box[2], box[3] = xmin, ymin, xmax, ymax
     return bboxes
+
 
 def draw_circle(image, value, x, y, space):
     if value in range(0,3):
@@ -231,6 +239,7 @@ def draw_circle(image, value, x, y, space):
         cv2.circle(image, (x, y), radius=10, color=color, thickness=-1)
         cv2.circle(image, (x + space, y), radius=10, color=color, thickness=-1)
         cv2.circle(image, (x + space + space, y), radius=10, color=color, thickness=-1)
+
 
 def draw_bbox(image, bboxes, tl_colors, state, info = False, counted_classes = None, show_label = True, allowed_classes = list(read_class_names(cfg.YOLO.CLASSES).values()), read_plate = False):
     classes = read_class_names(cfg.YOLO.CLASSES)
@@ -458,6 +467,7 @@ def bbox_ciou(bboxes1, bboxes2):
 
     return ciou
 
+
 def nms(bboxes, iou_threshold, sigma=0.3, method='nms'):
     """
     :param bboxes: (xmin, ymin, xmax, ymax, score, class)
@@ -495,11 +505,14 @@ def nms(bboxes, iou_threshold, sigma=0.3, method='nms'):
 
     return best_bboxes
 
+
 def freeze_all(model, frozen=True):
     model.trainable = not frozen
     if isinstance(model, tf.keras.Model):
         for l in model.layers:
             freeze_all(l, frozen)
+            
+
 def unfreeze_all(model, frozen=False):
     model.trainable = not frozen
     if isinstance(model, tf.keras.Model):
