@@ -48,7 +48,7 @@ We have created a custom function within the file [core/functions.py](https://gi
 
 To use this function all that is needed is to add the custom flag "--count" to your detect.py or detect_video.py command.
 
-![Inference video of our model](./final_video.mp4)
+![Inference video of our model](./final_video.gif)
 
 ### References  
 
